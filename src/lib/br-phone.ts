@@ -20,7 +20,7 @@ export function formatBrazilMobileDisplay(digits: string): string {
 }
 
 export function stripBrazilCountryCode(digits: string): string {
-  let d = digits.replace(/\D/g, "");
+  const d = digits.replace(/\D/g, "");
   if (d.length === 13 && d.startsWith("55")) {
     return d.slice(2, 2 + BR_MOBILE_MAX_DIGITS);
   }

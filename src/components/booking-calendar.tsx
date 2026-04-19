@@ -43,7 +43,9 @@ function BookingCalendarInner({
   const [viewMonth, setViewMonth] = useState(() => startOfMonth(selectedDate));
 
   useEffect(() => {
-    setViewMonth(startOfMonth(selectedDate));
+    queueMicrotask(() => {
+      setViewMonth(startOfMonth(selectedDate));
+    });
   }, [selectedDate]);
 
   const monthStart = startOfMonth(viewMonth);

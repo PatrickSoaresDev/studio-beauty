@@ -36,7 +36,9 @@ function WorkScheduleSection() {
   }, []);
 
   useEffect(() => {
-    load();
+    queueMicrotask(() => {
+      void load();
+    });
   }, [load]);
 
   async function save() {

@@ -59,7 +59,9 @@ function AdminUsersSection() {
   }, []);
 
   useEffect(() => {
-    void load();
+    queueMicrotask(() => {
+      void load();
+    });
   }, [load]);
 
   async function addUser(e: React.FormEvent) {

@@ -1,53 +1,107 @@
-# Agendamentos
+# Studio Beauty — Appointments
 
-Aplicação Next.js para marcação de horários: calendário público, disponibilidade com expediente e regras, e painel administrativo.
+Web app for booking appointments at a beauty studio: a public page with calendar and availability, plus an admin area for services, business hours, scheduling rules, and team accounts.
 
-## Requisitos
+## Features
 
-- Node.js 20+
-- MongoDB (local ou Atlas)
+- **Public booking** — pick a service, date, and time within a configurable window (e.g. 30 days ahead), respecting working hours, service duration, and blocks.
+- **`/admin` panel** — session-based auth; manage appointments (confirm/reject), weekly schedule, services and durations, closed days and blocked hours, and administrators (**owner** vs **admin** roles).
 
-## Configuração
+## Stack
 
-1. Copie as variáveis de ambiente (ex.: crie `.env.local`):
+| Layer      | Technology                                                                                |
+| ---------- | ----------------------------------------------------------------------------------------- |
+| Framework  | [Next.js](https://nextjs.org/) 16 (App Router)                                            |
+| UI         | React 19, [Tailwind CSS](https://tailwindcss.com/) 4                                      |
+| Database   | [MongoDB](https://www.mongodb.com/) via [Mongoose](https://mongoosejs.com/)               |
+| Admin auth | JWT in an httpOnly cookie ([jose](https://github.com/panva/jose)), bcrypt password hashes |
+| Dates      | [date-fns](https://date-fns.org/)                                                         |
+| Tests      | [Vitest](https://vitest.dev/)                                                             |
 
-| Variável | Descrição |
-|----------|-----------|
-| `MONGODB_URI` | URI de ligação ao MongoDB (obrigatório) |
-| `ADMIN_SESSION_SECRET` | **Obrigatório em produção** (mín. 32 caracteres aleatórios). Assina o JWT de sessão (HS256). Alterar invalida todas as sessões. Em desenvolvimento pode omitir-se e usar-se `ADMIN_PASSWORD` como fallback **apenas para assinar o JWT** (não é a senha de login). |
-| `ADMIN_PASSWORD` | Opcional. Só em **desenvolvimento**: se `ADMIN_SESSION_SECRET` tiver menos de 32 caracteres, este valor substitui-o para derivar a chave JWT. **Não é a palavra-passe de nenhum utilizador.** |
-| `ADMIN_SETUP_TOKEN` | **Primeiro utilizador:** em **produção**, ao criar o primeiro administrador (base vazia), o formulário deve enviar este token (igual ao valor desta variável). Em desenvolvimento é opcional se a variável estiver vazia. |
+## Requirements
 
-Os administradores são contas na coleção MongoDB (`AdminUser`: email + senha com hash **bcrypt**). Existe um papel **principal** (`role: owner`): o primeiro utilizador (bootstrap) e, em bases antigas, o utilizador mais antigo promovido automaticamente se faltar um `owner`. Só o principal pode **criar** novas contas e **ativar/desativar** outras; **ninguém** pode desativar a própria conta. Os restantes são `admin` e só alteram a própria senha. Novos admins são adicionados no separador **Equipa** pelo principal (`POST /api/admin/auth/change-password` para a própria senha).
+- **Node.js** 20 or newer
+- A reachable **MongoDB** instance (local, Docker, or [Atlas](https://www.mongodb.com/cloud/atlas))
 
-2. Instale dependências e execute em desenvolvimento:
+## Quick start
 
-```bash
-npm install
-npm run dev
-```
+1. **Clone and install**
 
-Abra [http://localhost:3000](http://localhost:3000). O admin está em `/admin/login`.
+   ```bash
+   git clone <repository-url>
+   cd appointment-app
+   npm install
+   ```
 
-## MongoDB com Docker (opcional)
+2. **Environment variables** — create `.env.local` at the project root:
 
-O repositório inclui `docker-compose.yml` com MongoDB na porta **27018** (apenas localhost). Exemplo de URI:
+   | Variable               | Required                 | Description                                                                                                                                                                             |
+   | ---------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+   | `MONGODB_URI`          | Yes                      | MongoDB connection URI.                                                                                                                                                                 |
+   | `ADMIN_SESSION_SECRET` | In production            | At least **32 random characters**. Signs the session JWT (HS256). Changing it invalidates existing sessions.                                                                            |
+   | `ADMIN_PASSWORD`       | No                       | **Development only:** if `ADMIN_SESSION_SECRET` is shorter than 32 characters, this can be used as a fallback **only to derive the JWT key** — it is **not** any user’s login password. |
+   | `ADMIN_SETUP_TOKEN`    | Production (first admin) | When the database is empty, the first admin signup must send this token (matching the env value). In development it can be omitted if the variable is empty.                            |
 
-```text
-MONGODB_URI=mongodb://admin:password123@127.0.0.1:27018/?authSource=admin
-```
+3. **Local MongoDB with Docker (optional)**
 
-(Ajuste utilizador/palavra-passe ao que definir no compose.)
+   ```bash
+   docker compose up -d
+   ```
+
+   `docker-compose.yml` exposes MongoDB on `127.0.0.1:27018` with user `admin` and password `password123` (change if you change the compose file). Example URI:
+
+   ```text
+   MONGODB_URI=mongodb://admin:password123@127.0.0.1:27018/?authSource=admin
+   ```
+
+4. **Run the dev server**
+
+   ```bash
+   npm run dev
+   ```
+
+   Open [http://localhost:3000](http://localhost:3000). Admin login: [http://localhost:3000/admin/login](http://localhost:3000/admin/login).
+
+### Administrators and roles
+
+Admin users live in the `AdminUser` collection (email + **bcrypt** hash). The **first** user created (bootstrap) is the **owner**. On older databases, if no `owner` exists, the oldest user may be promoted automatically.
+
+- The **owner** can create accounts and activate/deactivate other admins in the **Team** tab.
+- **No one** can deactivate their own account.
+- Other users are `admin`: they can manage the schedule and settings and change their own password (`POST /api/admin/auth/change-password`).
 
 ## Scripts
 
-- `npm run dev` — servidor de desenvolvimento
-- `npm run build` / `npm start` — produção
-- `npm run lint` — ESLint
+| Command              | Description                 |
+| -------------------- | --------------------------- |
+| `npm run dev`        | Next.js development server  |
+| `npm run build`      | Production build            |
+| `npm start`          | Serve after `npm run build` |
+| `npm run lint`       | ESLint                      |
+| `npm run test`       | Vitest (single run)         |
+| `npm run test:watch` | Vitest in watch mode        |
 
-## Notas
+## CI and deployment
 
-- Sessão admin: cookie **httpOnly** com **JWT** (`sub` = id, `sv` = `sessionVersion`). Ao mudar a senha, `sessionVersion` incrementa e **todas as outras sessões** desse utilizador deixam de ser válidas; a resposta renova a cookie. Chave HS256 derivada de `ADMIN_SESSION_SECRET` com SHA-256.
-- Cabeçalhos de segurança globais em `next.config.ts` (frame, content-type, referrer, permissions-policy).
-- Limitação de taxa de pedidos (rate limiting) deve ser configurada à frente da aplicação (CDN, API gateway, reverse proxy, etc.).
-- Índices em `Appointment` são criados pelo Mongoose na primeira utilização do modelo.
+GitHub Actions (`.github/workflows/ci.yml`):
+
+- On **push** and **pull request** to `main` or `master`: install dependencies, run **lint**, **tests**, and **build** (MongoDB service for CI).
+- Optional **Vercel production deploy** job: runs only if `vars.ENABLE_VERCEL_ACTIONS_DEPLOY == 'true'` and secrets `VERCEL_TOKEN`, `VERCEL_ORG_ID`, and `VERCEL_PROJECT_ID` are set. You can use the `production` environment with required reviewers.
+
+On Vercel (or any host), set the same production environment variables, especially `MONGODB_URI` and `ADMIN_SESSION_SECRET`.
+
+## Security and operations
+
+- Admin session: **httpOnly** cookie with JWT (`sub` = user id, `sv` = session version). On password change, the version increments and **other sessions** for that user become invalid; the response refreshes the cookie. HS256 key derived from `ADMIN_SESSION_SECRET` (via SHA-256).
+- Security-related HTTP headers are set in `next.config.ts` (frame, content-type, referrer, permissions-policy).
+
+## Repository layout (overview)
+
+- `src/app/` — App Router routes, public pages and `/admin`, API routes under `src/app/api/`.
+- `src/components/` — shared UI (e.g. booking calendar).
+- `src/models/` — Mongoose schemas.
+- `src/lib/` — utilities (business logic, Brazil phone helpers, etc.).
+
+---
+
+License and credits as defined in the repository. For production, always verify environment variables and MongoDB backups.

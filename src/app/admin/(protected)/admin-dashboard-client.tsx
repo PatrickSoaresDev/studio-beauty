@@ -64,7 +64,9 @@ export default function AdminDashboardClient() {
   }, [ruleFrom, ruleTo]);
 
   useEffect(() => {
-    load();
+    queueMicrotask(() => {
+      void load();
+    });
   }, [load]);
 
   async function logout() {

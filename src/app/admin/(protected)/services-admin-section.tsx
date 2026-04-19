@@ -54,7 +54,9 @@ function ServicesAdminSection() {
   }, []);
 
   useEffect(() => {
-    load();
+    queueMicrotask(() => {
+      void load();
+    });
   }, [load]);
 
   const dirty = useMemo(() => {
