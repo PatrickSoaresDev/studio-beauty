@@ -1,0 +1,38 @@
+# Deploy manual para Vercel (útil para reimplantar sem novo commit).
+#
+# Secrets (GitHub → Settings → Secrets and variables → Actions):
+#   VERCEL_TOKEN       → Vercel → Settings → Tokens → Create
+#   VERCEL_ORG_ID      → Team/Account settings → id (ou: npx vercel whoami - print org)
+#   VERCEL_PROJECT_ID  → Projeto → Settings → General → Project ID
+#   (ou após "npx vercel link" no projeto: .vercel/project.json — não commits este ficheiro.)
+#
+# Variáveis da aplicação (MONGODB_URI, ADMIN_SESSION_SECRET, …) ficam no painel Vercel
+# do projeto (Settings → Environment Variables), não neste workflow.
+name: Deploy Vercel
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Deploy to Vercel
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: "--prod"
